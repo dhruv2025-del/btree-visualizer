@@ -2,7 +2,7 @@
 
 A DBMS project that teaches B-tree indexing. Build a B-tree key by key and watch every step of insert, delete and search: walking down, splitting a full node, borrowing from a sibling, merging two nodes.
 
-**Live site:** _(paste the GitHub Pages link here after deployment)_
+**Live site:** _(https://dhruv2025-del.github.io/btree-visualizer/)_
 
 ## Pages
 
