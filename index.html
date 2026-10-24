@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>B-tree Visualizer | DBMS project</title>
+  <meta name="description" content="Build a B-tree key by key and watch every split, borrow and merge. Learn the concept, take a quiz, work through solved competitive-exam questions and download a report of your session.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23fff'/%3E%3Cg fill='none' stroke='%231c2738' stroke-width='1.8' stroke-linejoin='round'%3E%3Crect x='10' y='4' width='12' height='7'/%3E%3Cpath d='M16 4v7M13 11 7 19M19 11l6 8'/%3E%3Crect x='2.5' y='19' width='9' height='7'/%3E%3Crect x='20.5' y='19' width='9' height='7'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css?v=31">
+  <script>
+    /* Set the theme before the page paints so there is no flash. */
+    (function () {
+      try {
+        var t = localStorage.getItem('btree.theme');
+        if (t !== 'light' && t !== 'dark') t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) { /* storage blocked: keep the default */ }
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to the content</a>
+
+  <header class="masthead">
+    <div class="wrap masthead-row">
+      <a class="wordmark" href="#visualizer" data-goto="tab-builder">
+        <svg class="wordmark-glyph" width="30" height="24" viewBox="0 0 30 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="1.5" width="12" height="7"/>
+          <path d="M15 1.5v7M12 8.5 6 15.5M18 8.5l6 7"/>
+          <rect x="1.5" y="15.5" width="9" height="7"/>
+          <rect x="19.5" y="15.5" width="9" height="7"/>
+        </svg>
+        <span class="wordmark-name">B-tree Visualizer</span>
+        <span class="wordmark-sub">DBMS project</span>
+      </a>
+      <div class="masthead-tools">
+        <button type="button" class="textbtn" id="soundToggleBtn" aria-pressed="false" title="Play a short tone as each step is shown"><span id="soundLabel">Sound off</span></button>
+        <div class="mode-switch" role="group" aria-label="Colour mode">
+          <button type="button" class="mode-btn" id="dayModeBtn" aria-pressed="true"><span class="mode-icon" aria-hidden="true">&#9728;&#65039;</span> Day Mode</button>
+          <button type="button" class="mode-btn" id="nightModeBtn" aria-pressed="false"><span class="mode-icon" aria-hidden="true">&#127769;</span> Night Mode</button>
+        </div>
+      </div>
+    </div>
+    <nav class="wrap tabs" id="navTabs" role="tablist" aria-label="Sections">
+      <div class="tabs-main">
+        <button type="button" class="tab" role="tab" id="tabbtn-builder" data-tab="tab-builder" aria-controls="tab-builder" aria-selected="true">Visualizer</button>
+        <button type="button" class="tab" role="tab" id="tabbtn-quiz" data-tab="tab-quiz" aria-controls="tab-quiz" aria-selected="false" tabindex="-1">QUIZ</button>
+        <button type="button" class="tab" role="tab" id="tabbtn-exam" data-tab="tab-exam" aria-controls="tab-exam" aria-selected="false" tabindex="-1">COMPETITIVE EXAM</button>
+        <button type="button" class="tab" role="tab" id="tabbtn-download" data-tab="tab-download" aria-controls="tab-download" aria-selected="false" tabindex="-1">Download</button>
+      </div>
+      <div class="tabs-side">
+        <button type="button" class="tab" role="tab" id="tabbtn-help" data-tab="tab-help" aria-controls="tab-help" aria-selected="false" tabindex="-1">Help</button>
+        <button type="button" class="tab" role="tab" id="tabbtn-team" data-tab="tab-team" aria-controls="tab-team" aria-selected="false" tabindex="-1">Developed By</button>
+        <button type="button" class="tab tab-learn" role="tab" id="tabbtn-learn" data-tab="tab-learn" aria-controls="tab-learn" aria-selected="false" tabindex="-1">Learn</button>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main" class="wrap">
+
+    <!-- =====================================================================
+         Visualizer
+         ===================================================================== -->
+    <section class="pane" id="tab-builder" role="tabpanel" aria-labelledby="tabbtn-builder">
+      <h2 class="visually-hidden">Visualizer</h2>
+
+      <form class="controls" id="opsForm" autocomplete="off">
+        <div class="field field-order">
+          <label for="orderSelect">Order</label>
+          <select id="orderSelect">
+            <option value="3">3</option>
+            <option value="4" selected>4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+          </select>
+        </div>
+        <div class="field field-keys">
+          <label for="keysInput">Keys</label>
+          <input type="text" id="keysInput" placeholder="10 20 30 40" aria-describedby="keysHelp errorBanner" enterkeyhint="done">
+        </div>
+        <div class="actions">
+          <button type="button" class="btn primary" id="btnInsert">Insert</button>
+          <button type="button" class="btn" id="btnDelete">Delete</button>
+          <button type="button" class="btn" id="btnSearch">Search</button>
+        </div>
+        <div class="secondary-actions">
+          <button type="button" class="icon-btn small" id="btnUndo" aria-label="Undo" title="Undo the last change (Ctrl+Z)" disabled>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5 3 7l3.5 3.5"/><path d="M3.5 7H11a4 4 0 0 1 0 8H7"/></svg>
+          </button>
+          <button type="button" class="icon-btn small" id="btnRedo" aria-label="Redo" title="Put the change back (Ctrl+Y)" disabled>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.5 3.5 15 7l-3.5 3.5"/><path d="M14.5 7H7a4 4 0 0 0 0 8h4"/></svg>
+          </button>
+          <button type="button" class="btn small" id="btnRandom">Random keys</button>
+          <button type="button" class="btn small" id="btnClear">Clear tree</button>
+        </div>
+        <p class="form-error" id="errorBanner" role="alert" hidden><span id="errorMessage"></span></p>
+        <p class="form-help" id="keysHelp">Type whole numbers separated by spaces or commas. <span id="orderConstraintHint">Order 4: up to 3 keys and 4 children per node.</span> Changing the order clears the tree.</p>
+      </form>
+
+      <div class="examples" role="group" aria-label="Examples">
+        <span class="examples-label">Examples</span>
+        <button type="button" class="example-btn" id="presetCascade" title="Order 3, keys 10 to 70: the root splits twice and the tree grows to three levels">Root splits twice</button>
+        <button type="button" class="example-btn" id="presetBorrow" title="Order 4: an empty leaf takes a key from its right sibling">Borrow from the right</button>
+        <button type="button" class="example-btn" id="presetBorrowLeft" title="Order 4: an empty leaf takes a key from its left sibling">Borrow from the left</button>
+        <button type="button" class="example-btn" id="presetMerge" title="Order 4: two small leaves merge and the tree loses a level">Merge and shrink</button>
+        <button type="button" class="example-btn" id="presetInternal" title="Order 4: deleting a key from the root">Delete an internal key</button>
+        <button type="button" class="example-btn" id="presetRipple" title="Order 3: one delete causes two merges">Merges reach the root</button>
+        <button type="button" class="example-btn" id="presetGate" title="Order 4, keys 10 to 150: a three-level tree">A three-level tree</button>
+      </div>
+
+      <div class="workbench">
+        <div class="figure-col">
+          <figure class="figure">
+            <div class="sheet" id="vizViewport" tabindex="0" aria-label="The tree. Drag to move it. Hold Control and scroll to zoom.">
+              <div id="treeSvgContainer"></div>
+            </div>
+            <figcaption class="figcap">
+              <span class="figcap-text" id="figCaption"></span>
+              <span class="figcap-tools">
+                <button type="button" class="tool" id="btnCounts" aria-pressed="true" title="Show or hide the small count on each node: the keys it holds out of the most it can hold">Counts</button>
+                <button type="button" class="tool" id="btnZoomOut" aria-label="Zoom out">&minus;</button>
+                <button type="button" class="tool" id="btnZoomIn" aria-label="Zoom in">+</button>
+                <button type="button" class="tool" id="btnFitScreen" title="Fit the whole tree in the box">Fit</button>
+                <button type="button" class="tool" id="btnZoomReset" title="Show at full size">100%</button>
+              </span>
+            </figcaption>
+          </figure>
+
+          <div class="transport" role="group" aria-label="Step controls">
+            <button type="button" class="icon-btn" id="btnFirstStep" aria-label="First step" title="First step">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="2.2" height="12"/><path d="M15 3v12L6.5 9z"/></svg>
+            </button>
+            <button type="button" class="icon-btn" id="btnPrevStep" aria-label="Previous step" title="Previous step (Left arrow)">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true"><path d="M13 3v12L5 9z"/></svg>
+            </button>
+            <button type="button" class="btn primary play" id="btnPlayPause" title="Play or pause (Space)">
+              <svg id="playIcon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3 2v12l10-6z"/></svg>
+              <span id="playText">Play</span>
+            </button>
+            <button type="button" class="icon-btn" id="btnNextStep" aria-label="Next step" title="Next step (Right arrow)">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true"><path d="M5 3v12l8-6z"/></svg>
+            </button>
+            <button type="button" class="icon-btn" id="btnLastStep" aria-label="Last step" title="Last step">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true"><path d="M3 3v12l8.5-6z"/><rect x="12.8" y="3" width="2.2" height="12"/></svg>
+            </button>
+            <input type="range" id="stepSlider" min="1" max="1" value="1" step="1" aria-label="Step">
+            <span class="step-count" id="stepCounter">Step 1 of 1</span>
+            <label class="speed" for="animSpeedSelect">Speed
+              <select id="animSpeedSelect">
+                <option value="1600">Slow</option>
+                <option value="900" selected>Normal</option>
+                <option value="450">Fast</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="narration" id="messageBox" data-kind="info">
+            <button type="button" class="textbtn narration-speak" id="btnSpeakStep">Read aloud</button>
+            <div class="narration-kind" id="messageCategory">Ready</div>
+            <p class="narration-text" id="messageBody" aria-live="polite"></p>
+            <p class="narration-line" id="messageLine"></p>
+          </div>
+          <p class="example-note" id="exampleNote" hidden></p>
+          <p class="kbd-hint">Insert, Delete and Search play themselves step by step; press <kbd>Space</kbd> to pause. <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step through by hand, <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the last change, <kbd>Esc</kbd> fits the figure to the box. Drag the figure to move it; hold <kbd>Ctrl</kbd> and scroll to zoom.</p>
+        </div>
+
+        <section class="code-col" aria-labelledby="codeHeading">
+          <div class="code-head">
+            <h3 id="codeHeading">Pseudocode</h3>
+            <div class="code-tabs" role="group" aria-label="Which procedure to show">
+              <button type="button" class="code-tab" data-op="insert" aria-pressed="true">Insert</button>
+              <button type="button" class="code-tab" data-op="delete" aria-pressed="false">Delete</button>
+              <button type="button" class="code-tab" data-op="search" aria-pressed="false">Search</button>
+            </div>
+          </div>
+          <ol class="code" id="codeLines" data-op="insert" data-kind="info" aria-label="Pseudocode for insert"></ol>
+          <p class="code-hint" id="codeHint">The shaded lines are the ones the current step is carrying out.</p>
+        </section>
+
+        <aside class="steps-col" aria-labelledby="stepsHeading">
+          <h3 id="stepsHeading">Steps</h3>
+          <p class="steps-sub" id="stepsSub">Click a step to jump to it.</p>
+          <ol class="steps" id="stepsTimeline"></ol>
+        </aside>
+      </div>
+
+      <div class="readout-grid">
+        <section aria-labelledby="readoutHeading">
+          <h3 id="readoutHeading">This tree</h3>
+          <p class="summary-line" id="treeSummary">It holds <b id="statKeys">0</b> keys in <b id="statNodes">0</b> nodes over <b id="statHeight">0</b> levels. <span id="statKeyBounds">Every node holds 1 to 3 keys.</span></p>
+          <p class="summary-line" style="margin:0"><span class="rules" id="invariantBadge" data-state="ok">All rules hold</span></p>
+          <p class="rule-detail" id="ruleDetail"></p>
+        </section>
+        <section aria-labelledby="inspectorHeading">
+          <h3 id="inspectorHeading">Selected node</h3>
+          <div class="inspector" id="inspectorContent">Click a node in the figure to see what it holds.</div>
+        </section>
+        <section aria-labelledby="historyHeading">
+          <div class="h-row">
+            <h3 id="historyHeading">History</h3>
+            <button type="button" class="textbtn" id="btnClearHistory">Clear</button>
+          </div>
+          <ul class="history" id="historyList"></ul>
+        </section>
+      </div>
+    </section>
+    <!-- =====================================================================
+         QUIZ
+         ===================================================================== -->
+    <section class="pane" id="tab-quiz" role="tabpanel" aria-labelledby="tabbtn-quiz" hidden>
+      <header class="pane-head">
+        <h2>QUIZ</h2>
+        <p class="lead">Test what you know about B-trees. Choose how many questions you want and how hard they should be, then answer one question at a time.</p>
+      </header>
+
+      <!-- Step 1: choose -->
+      <form class="quiz-setup" id="quizSetup" novalidate autocomplete="off">
+        <div class="field field-count">
+          <label for="quizCount">Number of questions</label>
+          <input type="number" id="quizCount" value="5" min="1" max="30" step="1" inputmode="numeric" aria-describedby="quizCountHelp quizSetupError">
+          <span class="form-help" id="quizCountHelp">A whole number from 1 to 30.</span>
+        </div>
+        <fieldset class="level-pick">
+          <legend>Difficulty</legend>
+          <label class="level-opt"><input type="radio" name="quizLevel" value="easy"> <span><b>Easy</b> Definitions and counting: how many keys and children a node may have, how many nodes a search visits.</span></label>
+          <label class="level-opt"><input type="radio" name="quizLevel" value="medium" checked> <span><b>Medium</b> Operations: what a tree looks like after inserts and deletes, which key moves up in a split, borrow or merge.</span></label>
+          <label class="level-opt"><input type="radio" name="quizLevel" value="hard"> <span><b>Hard</b> Exam style: order from a block size, levels for N keys, and keys in a tree of h levels.</span></label>
+        </fieldset>
+        <p class="form-error" id="quizSetupError" role="alert" hidden></p>
+        <div class="q-actions"><button type="submit" class="btn primary" id="btnQuizStart">Start quiz</button></div>
+        <p class="muted small quiz-note">Each question is made when you start. Tree questions run on the same B-tree engine as the Visualizer, so their answers are worked out, not looked up. The questions are generated by the program, not by an online AI service.</p>
+      </form>
+
+      <!-- Step 2: one question at a time -->
+      <div class="quiz-run" id="quizRun" hidden>
+        <div class="quiz-bar">
+          <span class="quiz-progress" id="quizProgress">Question 1 of 5</span>
+          <span class="quiz-level" id="quizLevelTag">Medium</span>
+          <span class="quiz-score">Score: <b id="quizLiveScore">0</b></span>
+        </div>
+        <div class="bar" aria-hidden="true"><span id="quizBarFill"></span></div>
+
+        <h3 class="q-text" id="quizQuestion"></h3>
+        <div class="q-context" id="quizContext"></div>
+        <div class="options" id="quizOptions" role="radiogroup" aria-labelledby="quizQuestion"></div>
+
+        <div class="q-hint">
+          <button type="button" class="textbtn" id="btnQuizHint">Show a hint</button>
+          <p id="quizHintText" hidden></p>
+        </div>
+
+        <p class="form-error" id="quizPickError" role="alert" hidden>Choose one of the answers first.</p>
+        <div class="q-actions" id="quizSubmitRow">
+          <button type="button" class="btn primary" id="btnQuizSubmit">Submit answer</button>
+          <button type="button" class="textbtn" id="btnQuizQuit">Stop the quiz</button>
+        </div>
+
+        <div class="feedback" id="quizFeedback" data-kind="ok" role="status" hidden>
+          <b class="title" id="quizVerdict"></b>
+          <div id="quizExplain"></div>
+        </div>
+        <div class="q-actions" id="quizNextRow" hidden>
+          <button type="button" class="btn" id="btnQuizTry" hidden>Try this in the Visualizer</button>
+          <button type="button" class="btn primary" id="btnQuizNext">Next question</button>
+        </div>
+      </div>
+
+      <!-- Step 3: the result -->
+      <div class="quiz-result" id="quizResult" hidden>
+        <h3 id="quizResultHeading">Quiz finished</h3>
+        <p class="score-line"><span class="score-big" id="quizFinalScore">0 / 0</span> <span id="quizFinalPercent"></span></p>
+        <p id="quizFinalVerdict"></p>
+        <div class="table-wrap">
+          <table class="plain" id="quizSummary">
+            <thead><tr><th>#</th><th>Question</th><th>Your answer</th><th>Correct answer</th><th>Result</th></tr></thead>
+            <tbody id="quizSummaryBody"></tbody>
+          </table>
+        </div>
+        <div class="q-actions">
+          <button type="button" class="btn primary" id="btnQuizAgain">New quiz</button>
+          <button type="button" class="btn" id="btnQuizSame">Same settings again</button>
+          <button type="button" class="btn" data-goto="tab-download">Put this in the report</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         COMPETITIVE EXAM
+         ===================================================================== -->
+    <section class="pane" id="tab-exam" role="tabpanel" aria-labelledby="tabbtn-exam" hidden>
+      <header class="pane-head">
+        <h2>COMPETITIVE EXAM</h2>
+        <p class="lead" id="examLead">Solved questions on B-trees and B+ trees in the style of GATE and PSU recruitment papers. Every question has its options, the correct answer and a step-by-step solution.</p>
+      </header>
+
+      <div class="exam-bar" role="group" aria-label="Filter the questions">
+        <div class="field">
+          <label for="examTagFilter">Show</label>
+          <select id="examTagFilter">
+            <option value="all">All questions</option>
+            <option value="gate">Previous-year GATE questions</option>
+            <option value="practice">Practice questions</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="examTopicFilter">Topic</label>
+          <select id="examTopicFilter"><option value="all">All topics</option></select>
+        </div>
+        <div class="field field-search">
+          <label for="examSearch">Search the questions</label>
+          <input type="text" id="examSearch" placeholder="for example: block size, split, merge" autocomplete="off">
+        </div>
+        <label class="check-row exam-toggle"><input type="checkbox" id="examShowSolutions" checked> <span>Show answers and solutions</span></label>
+      </div>
+      <p class="exam-count" id="examCount" role="status"></p>
+
+      <ol class="exam-list" id="examList"></ol>
+      <p class="muted" id="examEmpty" hidden>No question matches these filters. Choose &ldquo;All questions&rdquo; or clear the search box.</p>
+
+      <p class="exam-note" id="examNote"><b>About the tags.</b> A GATE tag (for example &ldquo;GATE CSE 2015&rdquo;) is given only to a question whose paper, year and answer were checked against published solutions. Those questions are re-worded here, not copied. Every other question is a practice question written for this project, has no year, and had its answer worked out by running the B-tree engine or the formula.</p>
+
+      <section class="exam-calc" aria-labelledby="calcHeading">
+        <h3 id="calcHeading">Order and height calculator</h3>
+        <p class="muted">Use it to check your own numbers on block-size questions. It shows its working.</p>
+        <div class="exam-grid">
+          <div>
+            <p class="formula math" id="calcFormula"></p>
+            <fieldset>
+              <legend>What a node stores</legend>
+              <label class="check-row"><input type="radio" name="calcStructure" id="calcStructBplus" value="bplus"> <span>B+ tree internal node: block pointers and keys only</span></label>
+              <label class="check-row"><input type="radio" name="calcStructure" id="calcStructBtree" value="btree" checked> <span>B-tree node: every key also carries a record pointer</span></label>
+            </fieldset>
+            <div class="calc-fields">
+              <div class="field">
+                <label for="calcBlockSize">Block size <i>B</i> (bytes)</label>
+                <input type="number" id="calcBlockSize" value="512" min="1" step="1" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label for="calcKeySize">Key size <i>K</i> (bytes)</label>
+                <input type="number" id="calcKeySize" value="10" min="1" step="1" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label for="calcPointerSize">Block pointer <i>P</i> (bytes)</label>
+                <input type="number" id="calcPointerSize" value="6" min="1" step="1" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label for="calcRecordPointer">Record pointer <i>R</i> (bytes)</label>
+                <input type="number" id="calcRecordPointer" value="8" min="0" step="1" inputmode="numeric">
+              </div>
+              <div class="field field-wide">
+                <label for="calcTotalRecords">Number of keys in the tree <i>N</i></label>
+                <input type="number" id="calcTotalRecords" value="100000" min="1" step="1" inputmode="numeric">
+              </div>
+            </div>
+            <button type="button" class="btn primary" id="btnCalculateGate">Work it out</button>
+          </div>
+          <div class="calc-out" id="calcResultBox" aria-live="polite">
+            <p class="calc-order" id="calcResultOrder"></p>
+            <div id="calcResultDetails"></div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- =====================================================================
+         Learn
+         ===================================================================== -->
+    <section class="pane" id="tab-learn" role="tabpanel" aria-labelledby="tabbtn-learn" hidden>
+      <header class="pane-head">
+        <h2>Learn</h2>
+        <p class="lead">What a B-tree is, why databases use it, and how it keeps itself balanced. Read the concept, watch the video, then try it in the Visualizer.</p>
+        <div class="jump" role="group" aria-label="Jump to a part of this page">
+          <button type="button" class="chip" data-scrollto="learn-concept">Concept explanation</button>
+          <button type="button" class="chip" data-scrollto="learn-video">Animated video</button>
+          <button type="button" class="chip" data-scrollto="learn-refs">References</button>
+          <button type="button" class="chip" data-scrollto="learn-qa">Quick answers</button>
+        </div>
+      </header>
+
+      <!-- ================= Concept ================= -->
+      <section class="learn-block" id="learn-concept" aria-labelledby="conceptHeading">
+        <h3 class="block-title" id="conceptHeading">Concept explanation</h3>
+        <div class="theory-grid">
+          <div class="prose">
+            <div class="summary-box">
+              <p><b>In short.</b> A B-tree is a search tree built for data kept on disk. Each node fills one disk block and holds many sorted keys, so a single read narrows the search a great deal. The tree stays only a few levels deep, every leaf is on the same level, and the tree keeps itself that way: a node that gets too full is <b>split</b>, and a node that gets too empty <b>borrows</b> a key from a neighbour or <b>merges</b> with it.</p>
+            </div>
+
+            <h4>Why not a binary tree?</h4>
+            <p>Reading a block from a disk takes far longer than comparing keys in memory, so the number of blocks read is what counts. A balanced binary tree holds one key per node and needs about 20 levels for a million keys, which means about 20 block reads for one search. A B-tree of order 100 needs only 4 levels for the same million keys, so a search reads 4 blocks.</p>
+
+            <h4>Structure and rules</h4>
+            <p>The <b>order</b> <i>m</i> is the largest number of children a node may have, so a node holds at most <i>m</i> &minus; 1 keys. Some books define order differently, for example through a minimum degree <i>t</i>. This site uses the definition that most exam questions use.</p>
+            <ul>
+              <li>A node holds at most <i>m</i> &minus; 1 keys, in sorted order.</li>
+              <li>Every node except the root holds at least <span class="ceil"><i>m</i>/2</span> &minus; 1 keys. The root holds at least one key.</li>
+              <li>A node that is not a leaf and holds <i>k</i> keys has exactly <i>k</i> + 1 children. Everything inside a child is larger than the key on its left and smaller than the key on its right.</li>
+              <li>All leaves are on the same level.</li>
+            </ul>
+            <figure>
+              <div class="fig-box" data-figure="ref15"></div>
+              <figcaption><b>Fig. 1.</b> <i>A B-tree of order 4. Every node holds 1 to 3 keys and every leaf is on level 3.</i></figcaption>
+            </figure>
+
+            <h4>Search</h4>
+            <ol>
+              <li>Start at the root.</li>
+              <li>Look for the key among the sorted keys of the node. If it is there, stop: found.</li>
+              <li>If not, and the node is a leaf, stop: the key is not in the tree.</li>
+              <li>Otherwise go to the child whose range holds the key (the child number is the count of keys in the node that are smaller than the key) and repeat from step 2.</li>
+            </ol>
+
+            <h4>Insert</h4>
+            <ol>
+              <li>Start at the root and go down. At each node take the child whose range holds the new key, until you reach a leaf.</li>
+              <li>Put the key into the leaf, in sorted position.</li>
+              <li>If the leaf now has <i>m</i> keys, one too many, split it. The middle key moves up into the parent and the keys on either side become two separate nodes. When the node has an even number of keys there are two middle ones: this site moves up the right-hand one, and some books use the left-hand one. In an exam answer, say which you used.</li>
+              <li>The parent may now be too full. Split it the same way and keep going up. If the root splits, a new root is created above it. That is the only way a B-tree gets taller, and it adds a level to every path at once, so the leaves stay on the same level.</li>
+            </ol>
+            <figure>
+              <div class="fig-box" data-figure="split3"></div>
+              <figcaption><b>Fig. 2.</b> <i>Order 3: after 10 and 20 the root is full. Inserting 30 gives three keys, so the node splits and 20 moves up into a new root.</i></figcaption>
+            </figure>
+
+            <h4>Delete</h4>
+            <ol>
+              <li>Find the key. If it sits in an internal node, swap it with its <b>predecessor</b>, the largest key in the subtree to its left. The predecessor is always in a leaf, so the job becomes deleting from a leaf.</li>
+              <li>Remove the key from the leaf. If the leaf still has at least <span class="ceil"><i>m</i>/2</span> &minus; 1 keys, you are done.</li>
+              <li>Otherwise the leaf is too small. If a sibling has a key to spare, <b>borrow</b> it: the sibling's nearest key moves up into the parent and the parent's separating key moves down into the small node. This is called a rotation. This site tries the left sibling first.</li>
+              <li>If neither sibling has a spare key, <b>merge</b> the node with a sibling and pull the parent's separating key down between them. The parent has lost a key, so it may now be too small: repeat from step 3 one level up. If the root loses its last key, its only child becomes the root and the tree is one level shorter.</li>
+            </ol>
+
+            <h4>How tall can it get?</h4>
+            <p>This site counts levels, so a single node is 1 level. Some books count edges and give a height one smaller.</p>
+            <p>Let <i>t</i> = <span class="ceil"><i>m</i>/2</span>, the fewest children a non-root internal node may have. A tree with <i>N</i> keys has at most</p>
+            <p class="callout math">1 + log<sub><i>t</i></sub>((<i>N</i> + 1) / 2) levels,</p>
+            <p>and at least <span class="ceil">log<sub><i>m</i></sub>(<i>N</i> + 1)</span> levels, which happens when every node is full. With order 5 and 100 keys, <i>t</i> = 3 and 1 + log<sub>3</sub>(50.5) is about 4.6, so the tree has at most 4 levels. It also has at least 3, because two full levels hold only 24 keys. The calculator on the COMPETITIVE EXAM page does this for any block size.</p>
+
+            <h4>How much work is it?</h4>
+            <p>Search, insert and delete each follow one path from the root to a leaf, and splits and merges walk back up that same path. So each reads about as many blocks as the tree has levels, which grows like log <i>N</i> where the base of the logarithm is the number of children per node. Inside a node the keys are sorted, so choosing the right child is quick.</p>
+
+            <h4>B-tree, B+ tree and binary trees</h4>
+            <div class="table-wrap">
+              <table class="plain">
+                <thead>
+                  <tr><th></th><th>B-tree</th><th>B+ tree</th><th>AVL or red-black tree</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Built for</td><td>Disk blocks</td><td>Disk blocks; most database indexes</td><td>Memory</td></tr>
+                  <tr><td>Keys per node</td><td>Many</td><td>Many, and more than a B-tree gets from the same block, because inner nodes hold no record pointers</td><td>One</td></tr>
+                  <tr><td>Where the records (or pointers to them) are</td><td>In any node</td><td>Only in the leaves</td><td>In every node</td></tr>
+                  <tr><td>Range scan</td><td>Walk the tree up and down</td><td>Follow the links between leaves</td><td>Walk the tree in order</td></tr>
+                  <tr><td>Levels for a million keys</td><td>3 to 4</td><td>3 to 4, often 3</td><td>About 20 or more</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h4>Where B-trees are used</h4>
+            <p>Database systems use B-tree indexes so that a lookup by key reads only a few blocks; the default index in PostgreSQL, MySQL (InnoDB) and SQLite is a B-tree or a B+ tree variant. File systems such as NTFS, Btrfs and XFS use them to keep directories and file extents sorted. This site simulates the plain B-tree, which is the structure exam questions describe first.</p>
+
+            <h4>Mistakes that cost marks</h4>
+            <ul>
+              <li>Using a different definition of <b>order</b> from the one in the question. Read it before you calculate.</li>
+              <li>Counting <b>height</b> in edges when the question counts levels, or the other way round.</li>
+              <li>Forgetting that the <b>root</b> is allowed to hold fewer keys than other nodes.</li>
+              <li>Not saying which key moves up when a split has <b>two middle keys</b>.</li>
+              <li>Merging when a sibling could have lent a key. Always try to borrow first.</li>
+              <li>Putting <b>record pointers</b> into the size of an internal B+ tree node. They are only in the leaves.</li>
+            </ul>
+          </div>
+
+          <aside class="formulas" aria-labelledby="formulasHeading">
+            <h3 id="formulasHeading">Formulas</h3>
+            <ul>
+              <li>Most keys in a node: <i>m</i> &minus; 1</li>
+              <li>Fewest keys, non-root node: <span class="ceil"><i>m</i>/2</span> &minus; 1</li>
+              <li>Most children: <i>m</i></li>
+              <li>Fewest children, non-root internal node: <span class="ceil"><i>m</i>/2</span></li>
+              <li>Most keys in <i>h</i> levels: <i>m</i><sup><i>h</i></sup> &minus; 1</li>
+              <li>Fewest keys in <i>h</i> levels: 2<i>t</i><sup><i>h</i>&minus;1</sup> &minus; 1, with <i>t</i> = <span class="ceil"><i>m</i>/2</span></li>
+              <li>Node fits a block: <i>p</i>&middot;<i>P</i> + (<i>p</i> &minus; 1)&middot;<i>K</i> &le; <i>B</i>, and with record pointers <i>p</i>&middot;<i>P</i> + (<i>p</i> &minus; 1)(<i>K</i> + <i>R</i>) &le; <i>B</i></li>
+            </ul>
+            <h3>Key terms</h3>
+            <dl class="terms">
+              <dt>Key</dt><dd>A value the tree is sorted by.</dd>
+              <dt>Node</dt><dd>One block of the tree: a sorted list of keys and, unless it is a leaf, one more child than keys.</dd>
+              <dt>Leaf</dt><dd>A node with no children.</dd>
+              <dt>Order</dt><dd>The most children a node may have.</dd>
+              <dt>Split</dt><dd>Cutting a node with too many keys in two and moving its middle key up.</dd>
+              <dt>Borrow (rotation)</dt><dd>Taking a key from a sibling by way of the parent.</dd>
+              <dt>Merge</dt><dd>Joining two small siblings and the parent's key between them.</dd>
+              <dt>Predecessor</dt><dd>The largest key smaller than a given key.</dd>
+            </dl>
+            <p><button type="button" class="btn" data-goto="tab-builder">Try it in the Visualizer</button></p>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ================= Video ================= -->
+      <section class="learn-block" id="learn-video" aria-labelledby="videoHeading">
+        <h3 class="block-title" id="videoHeading">Animated video</h3>
+        <div class="video-grid">
+          <div>
+            <div class="video-frame" id="videoFrame">
+              <div class="video-poster" id="videoPoster">
+                <p class="video-title">B Trees and B+ Trees. How they are useful in Databases</p>
+                <p class="video-by">Abdul Bari, YouTube</p>
+                <button type="button" class="btn primary" id="btnPlayVideo">Play the video</button>
+                <p class="video-hint">The video loads from YouTube when you press the button, so you need an internet connection.</p>
+              </div>
+            </div>
+            <p class="video-links"><a href="https://www.youtube.com/watch?v=aZjYr87r1b8" target="_blank" rel="noopener">Open the video on YouTube</a> if it does not play here.</p>
+          </div>
+          <div class="grow" aria-labelledby="growHeading">
+            <h4 id="growHeading">Watch a B-tree grow</h4>
+            <p class="muted">This animation is drawn by the site itself, with no internet needed. It inserts 10, 20, 30, 40, 50, 60 and 70 into an empty tree of order 3 and then starts again.</p>
+            <div class="fig-box grow-fig" id="growFigure" aria-hidden="true"></div>
+            <p class="grow-caption" id="growCaption" role="status" aria-live="off"></p>
+            <div class="btn-row">
+              <button type="button" class="btn small" id="btnGrowPlay">Pause</button>
+              <button type="button" class="btn small" id="btnGrowRestart">Restart</button>
+              <button type="button" class="btn small" data-goto="tab-builder">Do it yourself</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= References ================= -->
+      <section class="learn-block" id="learn-refs" aria-labelledby="refsHeading">
+        <h3 class="block-title" id="refsHeading">References</h3>
+        <p class="muted">Where the explanations, the questions and the design come from, and where to read more. All other text is written for this project.</p>
+        <div class="refs-grid">
+          <div>
+            <h4>Books</h4>
+            <ul class="refs">
+              <li>T. H. Cormen, C. E. Leiserson, R. L. Rivest and C. Stein, <i>Introduction to Algorithms</i>, 4th edition, MIT Press, 2022. Chapter 18, B-Trees.</li>
+              <li>A. Silberschatz, H. F. Korth and S. Sudarshan, <i>Database System Concepts</i>, 7th edition, McGraw-Hill, 2019. Chapter 14, Indexing.</li>
+              <li>R. Elmasri and S. B. Navathe, <i>Fundamentals of Database Systems</i>, 7th edition, Pearson, 2016. Chapter 17, Indexing Structures for Files and Physical Database Design.</li>
+              <li>D. E. Knuth, <i>The Art of Computer Programming, Volume 3: Sorting and Searching</i>, 2nd edition, Addison-Wesley, 1998. Section 6.2.4, Multiway Trees.</li>
+            </ul>
+            <h4>Research papers</h4>
+            <ul class="refs">
+              <li>R. Bayer and E. McCreight, &ldquo;Organization and maintenance of large ordered indexes&rdquo;, <i>Acta Informatica</i> 1(3), 1972, pp. 173&ndash;189. The paper that introduced the B-tree.</li>
+              <li>D. Comer, &ldquo;The ubiquitous B-tree&rdquo;, <i>ACM Computing Surveys</i> 11(2), 1979, pp. 121&ndash;137. A survey of B-tree variants, including the B+ tree.</li>
+            </ul>
+          </div>
+          <div>
+            <h4>Websites</h4>
+            <ul class="refs">
+              <li><a href="https://en.wikipedia.org/wiki/B-tree" target="_blank" rel="noopener">B-tree</a>, Wikipedia. Definitions and the different meanings of &ldquo;order&rdquo;.</li>
+              <li><a href="https://www.cs.usfca.edu/~galles/visualization/BTree.html" target="_blank" rel="noopener">B-Tree visualization</a>, David Galles, University of San Francisco. An interactive B-tree animation for comparison.</li>
+              <li><a href="https://see-algorithms.com/" target="_blank" rel="noopener">See Algorithms</a>. The step-by-step layout of the Visualizer (figure, pseudocode and steps side by side) follows the style of its tree pages; the B-tree content here is this project&rsquo;s own.</li>
+              <li><a href="https://www.geeksforgeeks.org/dbms/practice-questions-b-b-trees/" target="_blank" rel="noopener">Practice questions on B and B+ trees</a>, GeeksforGeeks. Used to find which questions appeared in which GATE paper.</li>
+            </ul>
+            <h4>Educational resources</h4>
+            <ul class="refs">
+              <li><a href="https://gateoverflow.in/" target="_blank" rel="noopener">GATE Overflow</a>. Previous-year GATE questions with community solutions.</li>
+              <li>Published solutions to GATE Computer Science and Information Technology questions on GATE Overflow, GeeksforGeeks and CollegeDunia. The exam, year and answer of each tagged question on the COMPETITIVE EXAM page were checked against these.</li>
+            </ul>
+            <h4>Videos</h4>
+            <ul class="refs">
+              <li>Abdul Bari, <a href="https://www.youtube.com/watch?v=aZjYr87r1b8" target="_blank" rel="noopener">&ldquo;B Trees and B+ Trees. How they are useful in Databases&rdquo;</a>, YouTube, 2018.</li>
+            </ul>
+            <h4>Fonts</h4>
+            <ul class="refs">
+              <li>Atkinson Hyperlegible (Braille Institute) and STIX Two Text (STI Pub Companies), both under the SIL Open Font License. Licence files are in the <code>fonts</code> folder.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= Quick answers ================= -->
+      <section class="learn-block" id="learn-qa" aria-labelledby="qaHeading">
+        <h3 class="block-title" id="qaHeading">Quick answers</h3>
+        <div class="qa">
+          <p class="muted">Short written answers to common questions. They were written in advance and are matched to your question by keywords, so an unusual question may not match.</p>
+          <div class="qa-suggest" id="qaSuggest"></div>
+          <form class="qa-form" id="qaForm" autocomplete="off">
+            <input type="text" id="aiPromptInput" placeholder="Ask about a B-tree idea" aria-label="Your question">
+            <button type="submit" class="btn" id="btnAskAi">Look up</button>
+          </form>
+          <div class="qa-answer" id="aiTutorResponse" aria-live="polite"></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- =====================================================================
+         Help
+         ===================================================================== -->
+    <section class="pane" id="tab-help" role="tabpanel" aria-labelledby="tabbtn-help" hidden>
+      <header class="pane-head">
+        <h2>Help</h2>
+        <p class="lead">A user manual for this website. Read the steps in order and you can use every page without any other instructions.</p>
+        <div class="jump" role="group" aria-label="Jump to a part of the manual">
+          <button type="button" class="chip" data-scrollto="help-what">What it does</button>
+          <button type="button" class="chip" data-scrollto="help-visualizer">Visualizer</button>
+          <button type="button" class="chip" data-scrollto="help-quiz">QUIZ</button>
+          <button type="button" class="chip" data-scrollto="help-exam">COMPETITIVE EXAM</button>
+          <button type="button" class="chip" data-scrollto="help-download">Download</button>
+          <button type="button" class="chip" data-scrollto="help-other">Learn, Developed By, Day and Night</button>
+          <button type="button" class="chip" data-scrollto="help-keys">Keyboard</button>
+          <button type="button" class="chip" data-scrollto="help-problems">If something goes wrong</button>
+        </div>
+      </header>
+
+      <div class="help-body">
+
+        <section class="help-block" id="help-what">
+          <h3>What this website does</h3>
+          <p>This website teaches one topic: the <b>B-tree</b>, the search tree that databases use to find a record by its key. You give it numbers (the keys) and it builds a B-tree from them, one key at a time. It shows you every step: where a key is placed, when a node is too full and splits, and when a node is too empty and borrows a key or merges. You can then test yourself with a quiz, study solved exam questions, and download a report of everything you did.</p>
+          <div class="table-wrap">
+            <table class="plain">
+              <thead><tr><th>Page</th><th>What it is for</th></tr></thead>
+              <tbody>
+                <tr><td>Visualizer</td><td>Build a tree and watch each step. This is the main page.</td></tr>
+                <tr><td>QUIZ</td><td>Choose a number of questions and a difficulty, then answer one question at a time.</td></tr>
+                <tr><td>COMPETITIVE EXAM</td><td>More than 50 solved questions in the style of GATE and PSU papers, with a calculator.</td></tr>
+                <tr><td>Download</td><td>Save a report of your session as a PDF, a Word document or a text file.</td></tr>
+                <tr><td>Help</td><td>This manual.</td></tr>
+                <tr><td>Developed By</td><td>The team and the teacher who guided the project.</td></tr>
+                <tr><td>Learn</td><td>The concept explained, a video, and the references.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="help-block" id="help-visualizer">
+          <h3>Visualizer</h3>
+
+          <h4>The inputs</h4>
+          <div class="table-wrap">
+            <table class="plain">
+              <thead><tr><th>Input</th><th>What to give</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td>Order</td><td>Choose 3, 4, 5, 6 or 7 from the list.</td><td>The order is the most children a node may have. A node holds one key fewer. Changing the order clears the tree.</td></tr>
+                <tr><td>Keys</td><td>Whole numbers separated by spaces or commas, for example <code>10 20 30</code>.</td><td>From &minus;99,999 to 99,999, and up to 30 numbers at a time. The tree keeps each key once.</td></tr>
+                <tr><td>Speed</td><td>Slow, Normal or Fast.</td><td>How long each step stays on the screen while the steps play by themselves.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>Build and change a tree, step by step</h4>
+          <ol class="steps-list">
+            <li>Choose the <b>Order</b>. The note under the boxes tells you how many keys and children a node may have.</li>
+            <li>Click in the <b>Keys</b> box and type one or more numbers.</li>
+            <li>Press <b>Insert</b> (or press <kbd>Enter</kbd>). The steps play by themselves. The key you are placing travels down the tree to its leaf.</li>
+            <li>To remove keys, type them and press <b>Delete</b>. To look for keys, type them and press <b>Search</b>. Search never changes the tree.</li>
+            <li>When the steps stop, read the sentence under the figure. It says what the last step did.</li>
+            <li>To see it all again, press <b>First step</b> and then <b>Play</b>. To go one step at a time, press <b>Next step</b> or the right arrow key.</li>
+            <li>Made a mistake? Press <b>Undo</b>. <b>Redo</b> puts the change back.</li>
+            <li>Want a ready-made demonstration? Press one of the <b>Examples</b>, such as &ldquo;Root splits twice&rdquo;. It sets up the tree, plays it and explains what to look for.</li>
+          </ol>
+
+          <h4>What each button and control does</h4>
+          <div class="table-wrap">
+            <table class="plain">
+              <thead><tr><th>Control</th><th>What it does</th></tr></thead>
+              <tbody>
+                <tr><td>Insert</td><td>Adds each key you typed to the tree, one after another, and plays the steps.</td></tr>
+                <tr><td>Delete</td><td>Removes each key you typed, repairing the tree by borrowing or merging where it must.</td></tr>
+                <tr><td>Search</td><td>Looks for each key and shows the path from the root. The tree does not change.</td></tr>
+                <tr><td>Undo, Redo</td><td>Go back to the tree as it was before the last change, or forward again. Clearing the tree and loading an example can be undone too.</td></tr>
+                <tr><td>Random keys</td><td>Inserts eight random numbers that are not in the tree yet.</td></tr>
+                <tr><td>Clear tree</td><td>Empties the tree.</td></tr>
+                <tr><td>Examples</td><td>Each button loads a tree and an operation that shows one situation: a double split, borrowing from either side, a merge, an internal delete, merges that reach the root, and a three-level tree.</td></tr>
+                <tr><td>First step, Previous step, Next step, Last step</td><td>Move through the steps of the latest action by hand.</td></tr>
+                <tr><td>Play / Pause</td><td>Starts or stops the steps playing by themselves. If you are at the end, it starts again from the beginning.</td></tr>
+                <tr><td>Step slider</td><td>Drag to jump to any step. The text beside it says which step you are on.</td></tr>
+                <tr><td>Speed</td><td>Slow, Normal or Fast.</td></tr>
+                <tr><td>Counts</td><td>Shows or hides the small count on each node (keys held out of the most it can hold).</td></tr>
+                <tr><td>&minus;, +, Fit, 100%</td><td>Zoom the figure out, in, to fit the box, or to full size. You can also drag the figure to move it, and hold <kbd>Ctrl</kbd> while scrolling to zoom.</td></tr>
+                <tr><td>Read aloud</td><td>Speaks the sentence for the current step. It appears only in browsers that can speak.</td></tr>
+                <tr><td>Insert, Delete, Search (pseudocode tabs)</td><td>Choose which procedure is shown in the pseudocode panel.</td></tr>
+                <tr><td>Steps list</td><td>Click any line to jump to that step.</td></tr>
+                <tr><td>Sound</td><td>At the top of the page. Plays a short tone for each step. It is off until you turn it on.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>How the processing takes place</h4>
+          <ol class="steps-list">
+            <li>When you press Insert, Delete or Search, the page hands each key to the B-tree engine, a program that follows the textbook rules for order <i>m</i>.</li>
+            <li>The engine does the work one small move at a time and writes down a <b>step</b> after each move: a copy of the whole tree, a sentence saying what happened, and the nodes involved.</li>
+            <li>The page then plays those steps back. The <b>pseudocode</b> beside the figure shades the lines the current step is carrying out, so you can match each move to the algorithm.</li>
+            <li>After every action the page checks the rules of a B-tree: keys in order, no node too full or too empty, one more child than keys in every internal node, and all leaves on the same level. The result is reported under &ldquo;This tree&rdquo;.</li>
+          </ol>
+
+          <h4>How to read the output</h4>
+          <ul>
+            <li><b>The figure.</b> Each box is a node and each cell holds a key. Lines go from a node to its children. The leaves are all on the bottom level.</li>
+            <li><b>Yellow marks</b> the node or key the current step is about. <b>Blue</b> marks nodes the search has already passed through. A small tag above the figure carries the key you are placing.</li>
+            <li><b>The count on each node</b> is keys held out of the most allowed. It turns <b>red</b> when a node is too full, which is about to cause a split, and <b>amber</b> when it is too empty, which is about to cause a borrow or a merge.</li>
+            <li><b>The sentence under the figure</b> has a coloured label: blue for walking down or searching, green for a key placed or found, amber for a split, borrow or merge, red for a delete or a message that nothing could be done.</li>
+            <li><b>This tree</b> gives the number of keys, nodes and levels, and says whether all the rules hold. <b>Selected node</b> describes any node you click. <b>History</b> lists what you did, newest first.</li>
+          </ul>
+        </section>
+
+        <section class="help-block" id="help-quiz">
+          <h3>QUIZ</h3>
+          <ol class="steps-list">
+            <li>Open <b>QUIZ</b>.</li>
+            <li>Type the <b>number of questions</b> you want, from 1 to 30.</li>
+            <li>Choose a <b>difficulty</b>: Easy, Medium or Hard.</li>
+            <li>Press <b>Start quiz</b>. One question appears, with four answers.</li>
+            <li>Choose an answer and press <b>Submit answer</b>. If you need a nudge first, press <b>Show a hint</b>.</li>
+            <li>The page says &ldquo;Yes, you have correctly answered the question.&rdquo; or &ldquo;Yet to answer correctly.&rdquo; and explains the correct answer in both cases.</li>
+            <li>Press <b>Next question</b>. After the last one you see your score, a percentage and a table of every question with your answer and the correct one.</li>
+            <li>Press <b>New quiz</b> to choose again, or <b>Same settings again</b> for fresh questions of the same kind.</li>
+          </ol>
+          <p>If you leave the number box empty or type something that is not a whole number from 1 to 30, the page tells you what to fix before it starts.</p>
+        </section>
+
+        <section class="help-block" id="help-exam">
+          <h3>COMPETITIVE EXAM</h3>
+          <ol class="steps-list">
+            <li>Open <b>COMPETITIVE EXAM</b>. Every question shows its <b>tag</b>, the <b>question</b>, the <b>options</b> where it has any, the <b>correct answer</b> and a step-by-step <b>solution</b>.</li>
+            <li>A tag such as &ldquo;GATE CSE 2015&rdquo; means the question comes from that paper. &ldquo;Practice question&rdquo; means it was written for this project.</li>
+            <li>To practise, clear <b>Show answers and solutions</b>. The answers and workings disappear. Turn it back on to check your work.</li>
+            <li>Use <b>Show</b>, <b>Topic</b> and the search box to find the questions you want.</li>
+            <li>At the bottom, the <b>calculator</b> works out the order of a node from a block size, key size and pointer size, and the number of levels for a given number of keys. Fill in the boxes and press <b>Work it out</b>.</li>
+          </ol>
+        </section>
+
+        <section class="help-block" id="help-download">
+          <h3>Download</h3>
+          <ol class="steps-list">
+            <li>Use the Visualizer first. The report is about what you did there.</li>
+            <li>Open <b>Download</b>. The preview on the right shows what the report will contain.</li>
+            <li>Tick or untick the parts you want in <b>Include in the report</b>.</li>
+            <li>Press <b>Download PDF</b>, <b>Download Word document</b> or <b>Download text</b>.</li>
+          </ol>
+          <p>The report has these parts: the <b>user inputs</b> (the order and every key you inserted, deleted or searched), the <b>processing steps</b> (the sentences the engine wrote for each operation), the <b>intermediate results</b> (the tree after each operation), the <b>final output</b> (the finished tree and its figures) and <b>graphs, tables and figures</b>. If you took a quiz, its result is added. At the bottom of the page you can also save just the tree figure as SVG or PNG.</p>
+        </section>
+
+        <section class="help-block" id="help-other">
+          <h3>Learn, Developed By, Day Mode and Night Mode</h3>
+          <ul>
+            <li><b>Learn</b> (top right) explains the concept, has a video and lists the references.</li>
+            <li><b>Developed By</b> shows the team and the teacher who guided the project.</li>
+            <li><b>Day Mode</b> and <b>Night Mode</b> (top of every page) switch between a light and a dark page. Your choice is remembered in this browser.</li>
+          </ul>
+        </section>
+
+        <section class="help-block" id="help-keys">
+          <h3>Keyboard</h3>
+          <div class="table-wrap">
+            <table class="plain">
+              <thead><tr><th>Keys</th><th>What they do (on the Visualizer)</th></tr></thead>
+              <tbody>
+                <tr><td><kbd>Enter</kbd> in the Keys box</td><td>Insert</td></tr>
+                <tr><td><kbd>Space</kbd></td><td>Play or pause</td></tr>
+                <tr><td><kbd>&larr;</kbd> <kbd>&rarr;</kbd></td><td>Previous or next step</td></tr>
+                <tr><td><kbd>Home</kbd> <kbd>End</kbd></td><td>First or last step</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Undo, redo</td></tr>
+                <tr><td><kbd>Esc</kbd></td><td>Fit the figure to the box</td></tr>
+                <tr><td><kbd>Tab</kbd></td><td>Move between controls. The navigation bar also works with the arrow keys.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="help-block" id="help-problems">
+          <h3>If something goes wrong</h3>
+          <div class="table-wrap">
+            <table class="plain">
+              <thead><tr><th>What you see</th><th>What it means and what to do</th></tr></thead>
+              <tbody>
+                <tr><td>&ldquo;Type at least one whole number first.&rdquo;</td><td>The Keys box is empty. Type numbers and press the button again.</td></tr>
+                <tr><td>&ldquo;&hellip; is not a whole number.&rdquo;</td><td>The box holds something other than whole numbers (a letter or a decimal point). Use whole numbers separated by spaces or commas.</td></tr>
+                <tr><td>&ldquo;&hellip; is outside the range &minus;99,999 to 99,999.&rdquo;</td><td>Use a smaller number.</td></tr>
+                <tr><td>&ldquo;Enter at most 30 keys at a time.&rdquo;</td><td>Split the list and enter it in parts.</td></tr>
+                <tr><td>A step says a key is already in the tree</td><td>The tree keeps each key once, so the insert did nothing.</td></tr>
+                <tr><td>A step says a key is not in the tree</td><td>Nothing was deleted, because the key was not there.</td></tr>
+                <tr><td>The video does not play</td><td>It needs an internet connection and a web address that starts with http or https. Use the link under it to open YouTube, or watch the animation next to it, which works without internet.</td></tr>
+                <tr><td>The Download button seems to do nothing</td><td>Check that your browser allows downloads from this page. The page also shows a message under the buttons saying what it did.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>To see that the program is behaving, open <button type="button" class="textbtn" data-goto="tab-tests">the built-in checks</button>. They run in your browser and test the tree engine against many cases, including thousands of random inserts and deletes.</p>
+        </section>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         Developed By
+         ===================================================================== -->
+    <section class="pane" id="tab-team" role="tabpanel" aria-labelledby="tabbtn-team" hidden>
+      <header class="pane-head">
+        <h2>Developed By</h2>
+        <p class="lead">The students who built this project, and the teacher who guided it.</p>
+      </header>
+
+      <p class="team-notice" id="teamNotice" role="status" hidden>The team details have not been filled in yet. Open &ldquo;Edit the team details&rdquo; at the bottom of this page, enter the names, register numbers and photographs, and download the file it makes.</p>
+
+      <ul class="team-grid" id="teamGrid"></ul>
+
+      <section class="guide-card" aria-labelledby="guideHeading">
+        <h3 id="guideHeading">Guided By</h3>
+        <div id="guidePhotoBox"></div>
+        <p class="guide-name" id="guideName">Dr. Swaminathan A</p>
+        <p class="guide-role" id="guideRole">Assistant Professor</p>
+      </section>
+
+      <section class="about-project" aria-labelledby="aboutHeading">
+        <h3 id="aboutHeading">About the project</h3>
+        <dl class="about-list">
+          <div><dt>Project</dt><dd id="aboutTitle">B-tree Visualizer</dd></div>
+          <div><dt>Subject</dt><dd id="aboutCourse">Database Management Systems</dd></div>
+          <div><dt>Topic</dt><dd>B-tree indexing: how a database keeps a large sorted index balanced, with every insert, delete and search shown step by step.</dd></div>
+          <div><dt>Built with</dt><dd>HTML, CSS and JavaScript. The figure is drawn as SVG. There is no framework and no server code: everything runs in the browser, and nothing you type is sent anywhere.</dd></div>
+        </dl>
+        <h4>The parts of the program</h4>
+        <div class="table-wrap">
+          <table class="plain">
+            <thead><tr><th>Part</th><th>File</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td>B-tree engine</td><td><code>btree-engine.js</code></td><td>Insert, delete and search for orders 3 to 7, with splits, borrowing and merging. It records every step.</td></tr>
+              <tr><td>Visualizer</td><td><code>app.js</code>, <code>pseudocode.js</code></td><td>Draws the tree, plays the recorded steps, shades the pseudocode lines, and handles undo and redo.</td></tr>
+              <tr><td>QUIZ and question maker</td><td><code>practice.js</code>, <code>quiz.js</code></td><td>Makes questions whose answers are worked out by the engine or by formula, and runs the quiz.</td></tr>
+              <tr><td>COMPETITIVE EXAM</td><td><code>exam.js</code></td><td>The solved questions, their filters, and the answer checks.</td></tr>
+              <tr><td>Report</td><td><code>report.js</code>, <code>vendor/jspdf.umd.min.js</code></td><td>Records the session and writes the PDF, Word and text reports.</td></tr>
+              <tr><td>Checks</td><td><code>tests.js</code></td><td>The built-in tests of the engine and the question maker.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h4>Testing</h4>
+        <p>The engine is tested in the browser against many cases, then against thousands of random inserts and deletes, and a broken tree is checked to be caught. <button type="button" class="textbtn" data-goto="tab-tests">Open the built-in checks</button>.</p>
+      </section>
+
+      <details class="team-edit" id="teamEdit">
+        <summary>Edit the team details</summary>
+        <div class="team-edit-body">
+          <p class="muted">Enter each student&rsquo;s details. The page shows them straight away and keeps them in this browser. To make them part of the website itself, press <b>Download site-data.js</b> and replace the file with that name in the website folder.</p>
+          <div id="teamForm"></div>
+          <fieldset class="team-row" id="guideRow">
+            <legend>Guide</legend>
+            <div class="field"><label for="guidePhotoInput">Photograph of the guide</label><input type="file" id="guidePhotoInput" accept="image/*"><span id="guideThumbBox"></span></div>
+          </fieldset>
+          <div class="btn-row">
+            <button type="button" class="btn small" id="btnTeamAdd">Add a student</button>
+            <button type="button" class="btn small primary" id="btnTeamSave">Save in this browser</button>
+            <button type="button" class="btn small" id="btnTeamDownload">Download site-data.js</button>
+            <button type="button" class="btn small" id="btnTeamReset">Forget what I entered</button>
+          </div>
+          <p class="copy-status" id="teamStatus" role="status"></p>
+        </div>
+      </details>
+    </section>
+
+    <!-- =====================================================================
+         Download
+         ===================================================================== -->
+    <section class="pane" id="tab-download" role="tabpanel" aria-labelledby="tabbtn-download" hidden>
+      <header class="pane-head">
+        <h2>Download</h2>
+        <p class="lead">Save a report of what you did on the Visualizer: your inputs, every processing step, the trees you got along the way, and the final result with its figures and graphs.</p>
+      </header>
+
+      <div class="dl-grid">
+        <div class="dl-side">
+          <div class="field">
+            <label for="dlTitle">Report title</label>
+            <input type="text" id="dlTitle" value="B-tree Visualizer: session report" maxlength="90" autocomplete="off">
+          </div>
+          <fieldset>
+            <legend>Include in the report</legend>
+            <label class="check-row"><input type="checkbox" id="dlSteps" checked> <span>Processing steps for every operation</span></label>
+            <label class="check-row"><input type="checkbox" id="dlInter" checked> <span>The tree after each operation (intermediate results)</span></label>
+            <label class="check-row"><input type="checkbox" id="dlFigs" checked> <span>Figures of the trees</span></label>
+            <label class="check-row"><input type="checkbox" id="dlGraphs" checked> <span>Graphs and tables</span></label>
+            <label class="check-row"><input type="checkbox" id="dlQuiz" checked> <span>The result of the latest quiz, if you took one</span></label>
+            <label class="check-row"><input type="checkbox" id="dlChecks" checked> <span>Results of the built-in checks</span></label>
+          </fieldset>
+          <div class="dl-buttons" role="group" aria-label="Download the report as">
+            <button type="button" class="btn primary" id="btnDlPdf">Download PDF</button>
+            <button type="button" class="btn" id="btnDlDocx">Download Word document</button>
+            <button type="button" class="btn" id="btnDlTxt">Download text</button>
+          </div>
+          <p class="dl-status" id="dlStatus" role="status"></p>
+          <p class="muted small">The three files hold the same report. The PDF and the Word document include the figures and graphs; the text file draws the trees with plain characters.</p>
+        </div>
+        <div class="dl-preview" aria-label="Report preview">
+          <p class="dl-preview-label">Preview of the report</p>
+          <div class="report-doc" id="reportPreview"></div>
+        </div>
+      </div>
+
+      <section class="figure-export" aria-labelledby="figExportHeading">
+        <h3 id="figExportHeading">Just the tree figure</h3>
+        <p class="muted">Save the tree now showing on the Visualizer as a picture, or copy it as text. The preview shows exactly what will be saved.</p>
+        <div class="export-grid">
+          <div>
+            <fieldset>
+              <legend>Style</legend>
+              <label class="check-row"><input type="radio" name="exportStyle" value="paper" checked> <span>Paper: light, like the site</span></label>
+              <label class="check-row"><input type="radio" name="exportStyle" value="plain"> <span>Plain: black on white, best for printing</span></label>
+              <label class="check-row"><input type="radio" name="exportStyle" value="night"> <span>Night: light on dark</span></label>
+            </fieldset>
+            <label class="check-row"><input type="checkbox" id="optGrid" checked> <span>Draw the graph-paper grid</span></label>
+            <label class="check-row"><input type="checkbox" id="optHighlight"> <span>Keep the highlight from the current step</span></label>
+            <div class="inline-field">
+              <label for="optScale">PNG size</label>
+              <select id="optScale">
+                <option value="1">Normal</option>
+                <option value="2" selected>Sharp (2&times;)</option>
+                <option value="3">Very sharp (3&times;)</option>
+              </select>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn" id="btnExportSvg">Download SVG</button>
+              <button type="button" class="btn" id="btnExportPng">Download PNG</button>
+            </div>
+
+            <h4>As text</h4>
+            <textarea id="txtExportTree" rows="7" wrap="off" readonly aria-label="The tree as plain text"></textarea>
+            <p style="margin-top:10px"><button type="button" class="btn small" id="btnCopyTextReport">Copy text</button><span class="copy-status" id="copyStatus" role="status"></span></p>
+          </div>
+          <div class="export-preview" id="snapshotPreviewBox"></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- =====================================================================
+         Built-in checks (reached from the footer and the Help and Developed By pages)
+         ===================================================================== -->
+    <section class="pane" id="tab-tests" role="tabpanel" aria-labelledby="checksHeading" hidden>
+      <header class="pane-head">
+        <h2 id="checksHeading">Built-in checks</h2>
+        <p class="lead">These checks run in your browser, against the same engine you use on the Visualizer, every time you press the button. They cover the cases a B-tree gets wrong most often, check the question makers and the report, then try thousands of random inserts and deletes.</p>
+      </header>
+
+      <div class="checks-bar">
+        <button type="button" class="btn primary" id="btnRunAllTests">Run the checks</button>
+        <p id="checksSummary" role="status"></p>
+      </div>
+      <table class="checks" id="testsTable">
+        <thead>
+          <tr><th>#</th><th>What is checked</th><th>Why it matters</th><th>Result</th><th>Time</th></tr>
+        </thead>
+        <tbody id="testsTableBody"></tbody>
+      </table>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>B-tree Visualizer, a DBMS project. The site runs entirely in your browser; nothing you type is sent anywhere.</p>
+      <p><button type="button" class="textbtn" data-goto="tab-tests">Built-in checks</button> <button type="button" class="textbtn" data-goto="tab-help">Help</button> <button type="button" class="textbtn" data-goto="tab-team">Developed By</button></p>
+    </div>
+  </footer>
+
+  <script src="vendor/jspdf.umd.min.js?v=31"></script>
+  <script src="site-data.js?v=31"></script>
+  <script src="btree-engine.js?v=31"></script>
+  <script src="pseudocode.js?v=31"></script>
+  <script src="app.js?v=31"></script>
+  <script src="practice.js?v=31"></script>
+  <script src="quiz.js?v=31"></script>
+  <script src="exam.js?v=31"></script>
+  <script src="learn.js?v=31"></script>
+  <script src="team.js?v=31"></script>
+  <script src="report.js?v=31"></script>
+  <script src="tests.js?v=31"></script>
+</body>
+</html>
